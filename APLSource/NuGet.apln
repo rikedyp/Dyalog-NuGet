@@ -1,0 +1,92 @@
+:Namespace NuGet
+    
+    project_dir←''
+    project_name←''
+    using_paths←0 2⍴''
+    
+    ∇ Test
+      Setup'/tmp/newget'      
+      Add'Clock' '1.0.3'      
+      Using'Clock'
+    ∇
+    
+    ∇ r←Add pkgs;AP;add
+      pkgs←,⊆pkgs
+      add←(⊣,' --version ',⊢)/pkgs
+      AP←{⎕CMD'dotnet add ',⍺,' package ',⍵}
+      project_dir∘AP¨add
+      using_paths∪←Publish add
+    ∇
+    
+    ∇ using_paths←Publish pkgs;d;dll;k;p;pkg_name;pkgrt;t;v
+      ⎕CMD NormalisePaths 'dotnet publish ',project_dir,' -o ',project_dir,'\packages'
+      (d k v t)←↓⍉⎕JSON⎕opt'Format' 'M'⊃⎕NGET project_dir,'/packages/',project_name,'.deps.json'
+     ⍝ Depth, Key, Value, Type      
+      {}2{p[⍵]←⍺[⍺⍸⍵]}⌿⊢∘⊂⌸d⊣p←⍳≢d   ⍝ Parent vector p
+     ⍝ Descendant of pkgs and key≡"runtime"
+      pkg_name←⊃¨'/'(≠⊆⊢)¨k   ⍝ e.g. Clock/1.0.3 → Clock
+      pkgrt←(k∊⊂'runtime')(∧⍤1){⍵∨⍵[p]}⍤1⍣≡pkg_name(∊⍤1 0)pkgs
+     ⍝ Child of "runtime" key is path to .dll
+     ⍝    file name    key  parent is "runtime"
+      dll←⊃∘⌽¨'/'(≠⊆⊢)¨k⌿⍤1⍨(⊂p)⌷⍤1⊢pkgrt   
+      using_paths←(project_dir,'/packages/')∘,¨dll              
+    ∇
+    
+    ∇ r←Using pkgs;deps;idx          
+      pkgs←,⊆pkgs
+      idx←using_paths[;1]⍳pkgs
+      ⎕←have_using←idx≤≢using_paths
+      ⎕←can_use←have_using⌿idx
+      
+      :if can_use≡⍥≢pkgs
+          r←(⊣,',',⊢)/using_paths[can_use;]          
+      :Else
+          add←pkgs~have_using⌿pkgs
+          
+          
+          r←using_paths[can_use;]
+          r⍪←new
+      :endif      
+    ∇
+    
+    ∇ r←Setup dir
+      project_dir←dir
+      project_name←⊃⌽'/'(≠⊆⊢)dir
+      :if IsWin
+          NormalisePaths←('/'⎕R'\\')
+      :else
+          NormalisePaths←('\\'⎕R'/')
+      :endif
+      dotnet_version←GetDotNetVersion
+      ⎕←↑⎕CMD NormalisePaths 'dotnet new classlib --target-framework-override ',dotnet_version,' -o ',dir
+      xml←⎕XML⊃⎕nget project_dir,'/',project_name,'.csproj'
+      pkgs←(⊂⊂1 2)⊃¨xml[⍸xml[;2]∊⊂'PackageReference';4]
+      using_paths←Publish pkgs
+    ∇
+    
+    ∇ r←IsWin
+      r←'Windows'(⊃⍷)⊃#⎕wg'APLVersion'
+    ∇
+    
+    ∇ dnv←GetDotNetVersion;ver
+⍝ More detailed version in [DYALOG]/SALT/spice/Spice.dyalog (used in ]TOOLS.Version etc.)
+⍝ 0/1/2: 0=nothing, 1=.NET Framework, 2=.NET Core / .NET 5+
+⍝ TODO 0 case
+      ⎕USING←'' 'System'
+      :Trap 0
+          ver←⍕System.Environment.Version
+      :Else
+          'No .NET available. Install a .NET SDK or check [NETCORE] environment variable.'⎕SIGNAL 11
+      :EndTrap
+      
+      :If '4.0.30319.42000'≡ver
+          dnv←⊃,/2↑'.'(≠⊆⊢)⊃⌽' '(≠⊆⊢)Runtime.InteropServices.RuntimeInformation.FrameworkDescription
+      :ElseIf '4.0.30319.'≡10↑ver
+          dnv←ver
+      :Else
+          dnv←⊃(⊣,'.',⊢)/⍕¨System.Environment.Version.(Major Minor)
+      :EndIf
+      dnv,⍨←'net'
+    ∇
+    
+:EndNamespace

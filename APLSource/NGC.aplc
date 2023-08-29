@@ -1,0 +1,90 @@
+:Class NGC
+    (⎕IO ⎕ML)←1
+    :field public project_name
+    :field public project_dir
+    :field public dotnet_version
+    :field public packages←⍬
+    :field private quiet←0
+
+    :Section Dev
+
+    Log ← {quiet:_←⍵ ⋄ ⎕←⍵}
+
+    :EndSection
+
+    :Section System
+
+    ∇ dnv←GetDotNetVersion;ver
+⍝ More detailed version in [DYALOG]/SALT/spice/Spice.dyalog (used in ]TOOLS.Version etc.)
+⍝ 0/1/2: 0=nothing, 1=.NET Framework, 2=.NET Core / .NET 5+
+⍝ TODO 0 case
+      ⎕USING←'' 'System'
+      :Trap 0
+          ver←⍕System.Environment.Version
+      :Else
+          'No .NET available. Install a .NET SDK or check [NETCORE] environment variable.'⎕SIGNAL 11
+      :EndTrap
+     
+      :If '4.0.30319.42000'≡ver
+          dnv←⊃,/2↑'.'(≠⊆⊢)⊃⌽' '(≠⊆⊢)Runtime.InteropServices.RuntimeInformation.FrameworkDescription
+      :ElseIf '4.0.30319.'≡10↑ver
+          dnv←ver
+      :Else
+          dnv←⊃(⊣,'.',⊢)/⍕¨System.Environment.Version.(Major Minor)
+      :EndIf
+      dnv,⍨←'net'
+    ∇
+
+
+    :EndSection
+
+    :Section DotNetProject
+
+    ∇ make1 path;dnv
+      :Access public
+      :Implements constructor
+⍝ Not a huge fan of this "several Make functions for different numbers of arguments" thing...
+      project_dir←path   ⍝
+      project_name←⊃⌽⎕NPARTS path
+      dotnet_version←GetDotNetVersion
+⍝ why cmd errors don't come back to APL
+      ⎕←↑⎕CMD'dotnet new classlib --target-framework-override ',dotnet_version,' -o ',path
+    ∇
+
+    ∇ AddPackages pkgs;str;AP
+      :Access public   ⍝ this is also a pain - can we do something that isn't a class?
+      pkgs←,⊆pkgs
+      str←(⊣,' --version ',⊢)/pkgs
+      AP←{⎕CMD'dotnet add ',⍺,' package ',⍵}
+      project_dir∘AP¨str
+      packages,←pkgs
+      ⎕CMD'dotnet publish ',' -o ',project_dir
+    ∇   
+    
+    ∇ Publish dir
+    ⎕CMD 'dotnet publish ',
+    ∇
+
+    ∇ using←Using pkg;mat;d;n;v;t;p;tgt;pid;name;isdep;GetDeps;use;dll;⎕USING;up;cache;pn;pkgs;tp
+   ⍝ Find DLL of packages in pkg
+   ⍝ pkg:: char vec, or vec of char vecs.	
+      :Access public
+      mat←0(⎕JSON ⎕OPT'Format' 'M')⊃⎕NGET project_dir,'/obj/project.assets.json'
+      (d n v t)←↓⍉mat ⋄ _←2{p[⍵]←⍺[⍺⍸⍵]}⌿⊢∘⊂⌸d⊣p←⍳≢d
+      tgt←⍸p=1+⍸'version' 'targets'⍷n ⋄ tp←p=tgt   ⍝ Target; target package
+      name←,⊆pkg ⋄ pn←,∘'/'¨name
+      pkgs←⍸tp(∨⌿∧⍤1)pn∘.(⊃⍷)n   ⍝ This pkg node
+      isdep←'dependencies'∘≡¨n
+      GetDeps←{⍵∪⍸tp∧n∊(⊣,'/',⊢)/⍉↑(n v)/¨⍨⊂p∊⍸isdep∧p∊⍵}
+      use←GetDeps⍣≡pkgs
+      dll←'/',¨n⌿⍨p∊⍸('runtime'∘≡¨n)∧p∊use
+      dll⌿⍨←'.dll'∘≡¨¯4↑¨dll
+      ⎕USING←'System'
+      up←Environment.(GetFolderPath SpecialFolder.UserProfile)
+      cache←up,'/.nuget/packages/'
+      using←name,¨',',¨cache∘,¨n[pkgs],¨dll
+    ∇
+
+    :endsection
+
+:endclass
