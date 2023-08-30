@@ -1,0 +1,6 @@
+test_parquet;path;z;colnames;data
+#.NuGet.Add'Parquet.Net'
+⎕USING←#.NuGet.UsingPaths,⊂'System.IO,System.IO.FileSystem,System.IO.Stream'
+path←⊃⎕NPARTS 4⊃5179⌶'test_parquet'
+(data colnames)←Read path,'userdata1.parquet'
+colnames,[0.5]⍪¨10↑¨data

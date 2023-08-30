@@ -1,0 +1,5 @@
+test name
+'No such test' ⎕SIGNAL (3≠⎕NC 'test_',name)/6
+3 ⎕NDELETE '/tmp/nuget-test'
+#.NuGet.Setup'/tmp/nuget-test'
+⍎'test_',name

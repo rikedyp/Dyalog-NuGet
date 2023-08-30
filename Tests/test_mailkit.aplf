@@ -1,0 +1,17 @@
+r←test_mailkit;pckgs;jwt;p;mkt
+∘∘∘ ⍝ Not converted to NuGet
+Env←{+2 ⎕NQ'.' 'GetEnvironment'⍵}
+pckgs←0 2⍴⍬
+pckgs⍪←'MimeKit' '3.5.0'
+pckgs⍪←'MailKit' '3.5.0'
+mkt←⎕NEW Project'SampleMailKit'
+:For p :In ↓pckgs
+mkt.Add ⎕NEW Package p
+:EndFor
+mkt.Restore
+⎕USING←(⊂'System'),(mkt.Using)
+client←⎕NEW Pop3Client
+client.Connect(Env'CITA_SMTP_SERVER')(110)(0)
+client.Authenticate(Env'CITA_SMTP_USER')(Env'CITA_SMTP_PASSWORD')
+⎕←client.Count
+∘∘∘

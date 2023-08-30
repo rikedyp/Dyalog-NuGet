@@ -24,6 +24,7 @@ NuGet targets the project for the version of .NET currently available in the act
 
 
 ```
+NuGet.Setup '/a/project/folder'
 NuGet.Add'Clock'
 NuGet.Add'Parquet'
 ```

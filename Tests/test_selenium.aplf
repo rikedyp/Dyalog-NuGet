@@ -1,0 +1,16 @@
+r←test_selenium;using;prefixes;path;drvs;drv
+#.NuGet.Add 'Selenium.WebDriver'
+using←#.NuGet.Add 'Selenium.WebDriver.ChromeDriver'
+prefixes←'OpenQA' 'OpenQA.Selenium' 'OpenQA.Selenium.Chrome'
+⎕USING←prefixes,using
+path←#.NuGet.BinFolder,'/chromedriver.exe'
+drvs←ChromeDriverService.CreateDefaultService ⊂path
+drv←⎕NEW ChromeDriver drvs
+drv.Url←'https://dyalog.com'
+⎕DL 5
+:If drv.Title≢'Dyalog - Home'
+   ∘∘∘ ⍝ boo
+:Else
+   ⎕←'Successfully loaded ',drv.Title
+:EndIf
+drv.Quit
